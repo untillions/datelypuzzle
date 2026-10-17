@@ -298,7 +298,12 @@ $('#board').addEventListener('pointerdown',e=>{
 
 $('#hint').onclick=hint;
 $('#reset').onclick=()=>{clear();msg('🧹 Board cleared.','clear')};
-document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{S.mode=b.dataset.mode;if(S.mode=='fixed')snap();msg('');render()});
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{
+  S.mode=b.dataset.mode;
+  if(S.mode=='fixed')snap();
+  else for(const k of unplaced())S.shape[k]=norm(P[k]);
+  msg('');render();
+});
 document.addEventListener('keydown',e=>{
   if(e.target.tagName=='INPUT')return;
   if(e.key=='r'||e.key=='R')turn(cycle);
