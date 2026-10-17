@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dately Puzzle</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--ink:#1b2430;--mut:#5d6b7a;--board:#2b3340;--cell:#3a4555;--hole:#eef1f4;--line:#c4ccd6;--btn:#1b2430;--btnink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--ink:#e8edf2;--mut:#93a1b0;--board:#222a35;--cell:#2e3846;--hole:#12161c;--line:#33404f;--btn:#e8edf2;--btnink:#12161c}}
+:root[data-theme="dark"]{--bg:#12161c;--ink:#e8edf2;--mut:#93a1b0;--board:#222a35;--cell:#2e3846;--hole:#12161c;--line:#33404f;--btn:#e8edf2;--btnink:#12161c}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+.app{max-width:1000px;margin:0 auto;padding:10px 12px;display:grid;gap:10px}
+header{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px}
+h1{margin:0;font-size:clamp(1.3rem,5.5vw,2rem);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+header p{margin:2px 0 0;color:var(--mut);font-size:.85rem;white-space:nowrap}
+input[type=date]{font-family:inherit;font-size:.85rem;color:var(--ink);background:transparent;border:2px solid var(--line);border-radius:8px;padding:4px 6px;min-width:0;max-width:150px}
+.board{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;background:var(--board);padding:8px;border-radius:12px;width:min(100%,520px,calc(100dvh - 360px));aspect-ratio:1;margin:0 auto}
+.board button{aspect-ratio:1;border:0;border-radius:6px;background:var(--cell);color:#9fb0c3;font-weight:600;font-size:clamp(.6rem,2.7vw,.85rem);line-height:1;font-family:inherit;padding:0;cursor:pointer}
+.board .off{visibility:hidden}
+.board{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.fly{position:fixed;left:0;top:0;pointer-events:none;z-index:50;opacity:.92}
+.fly i{position:absolute;border-radius:6px;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+body.dragging{cursor:grabbing}
+.help{margin:0;color:var(--mut);font-size:.9rem}
+.board .tgt{background:var(--hole);color:var(--ink);font-weight:800;outline:2px dashed var(--mut);outline-offset:-3px;cursor:default}
+.board .on{color:#fff;cursor:grab}
+.board .given{box-shadow:inset 0 0 0 3px rgba(255,255,255,.75);cursor:default}
+.board .ok{outline:3px solid #7ddc9a;outline-offset:-3px;filter:brightness(1.25)}
+.board .bad{outline:3px solid #ff7b7b;outline-offset:-3px}
+#msg{min-height:3.9em;margin:8px 0 0;color:var(--mut);font-size:.88rem;line-height:1.3;text-align:center}
+#msg.win{color:#1f9d55}
+#msg.warn{color:#d96b00}
+#msg.info{color:#3b82c4}
+#msg.clear{color:#e5484d}
+.side{display:grid;gap:14px;align-content:start}
+.seg,.row{display:flex;flex-wrap:nowrap;justify-content:center;gap:8px}
+
+.modes{margin:0 auto;width:100%}
+.actions{order:2}
+button.b.danger{border-color:#e5484d;color:#e5484d}
+button.b{font-family:inherit;font-weight:600;font-size:.8rem;border:2px solid var(--btn);background:transparent;color:var(--ink);border-radius:8px;padding:9px 14px;white-space:nowrap;cursor:pointer}
+button.b[aria-pressed=true],button.b.pri{background:var(--btn);color:var(--btnink)}
+button.b:disabled{opacity:.4;cursor:not-allowed}
+.tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tile{border:2px solid var(--line);background:transparent;border-radius:10px;padding:6px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.tile .g{--t:clamp(10px,min(3.4vw,2dvh),20px);display:grid;grid-template-columns:repeat(4,var(--t));grid-template-rows:repeat(4,var(--t));gap:2px}
+.tile[aria-pressed=true]{border-color:var(--ink)}
+.tile i{border-radius:4px;display:block}
+.empty{color:var(--mut);align-self:center}
+button:focus-visible,input:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+@media(min-width:860px){.app{grid-template-columns:minmax(0,520px) 1fr;column-gap:36px}header,.modes{grid-column:1/-1}.modes{margin:0}.board{width:min(100%,520px,calc(100dvh - 250px))}.tray{justify-content:flex-start}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div><h1>Dately Puzzle 🧩</h1><p id="sub"></p></div>
+  <label><input type="date" id="dt" aria-label="Puzzle date"></label>
+</header>
+<div class="seg modes" role="group" aria-label="Difficulty"><button class="b" data-mode="fixed" aria-pressed="false">Normal Mode 🟢</button><button class="b" data-mode="free" aria-pressed="true">Hard Mode 🔴</button></div>
+<section>
+  <div id="board" class="board"></div>
+  <p id="msg" aria-live="polite"></p>
+</section>
+<section class="side">
+  <div class="seg actions" role="group" aria-label="Actions">
+    
+    <button class="b" id="hint">Hint 💡</button><button class="b danger" id="reset">Clear</button>
+  </div>
+  
+  <div id="tray" class="tray"></div>
+  
+  
+</section>
+</div>
+<script>
+// ---- Pieces (edit here if your physical set differs) ----
+const P={L:[[0,0],[1,0],[2,0],[3,0],[3,1]],N:[[0,1],[1,1],[1,0],[2,0],[3,0]],P:[[0,0],[0,1],[1,0],[1,1],[2,0]],U:[[0,0],[0,2],[1,0],[1,1],[1,2]],V:[[0,0],[1,0],[2,0],[2,1],[2,2]],Z:[[0,0],[0,1],[1,1],[2,1],[2,2]],R:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]],Y:[[0,1],[1,0],[1,1],[2,1],[3,1]]};
+const COL={L:'#e4572e',N:'#d9962b',P:'#4f9d69',U:'#2e86ab',V:'#7b5ea7',Z:'#d65a8a',R:'#4a6fa5',Y:'#8f9a22'};
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $=s=>document.querySelector(s);
+
+// ---- Geometry ----
+const norm=c=>{const a=Math.min(...c.map(p=>p[0])),b=Math.min(...c.map(p=>p[1]));return c.map(([x,y])=>[x-a,y-b]).sort((p,q)=>p[0]-q[0]||p[1]-q[1])};
+const rot=c=>norm(c.map(([x,y])=>[y,-x]));
+const flip=c=>norm(c.map(([x,y])=>[x,-y]));
+// Steps through all rotations and mirror images of the selected tile
+const cycle=sh=>{const L=OR[S.sel],i=L.findIndex(o=>o.join(';')==sh.join(';'));return L[(i+1)%L.length]};
+function orients(c){const s=new Map();let a=norm(c);for(let f=0;f<2;f++){for(let r=0;r<4;r++){a=rot(a);s.set(a.join(';'),a)}a=flip(a)}return [...s.values()]}
+const OR=Object.fromEntries(Object.entries(P).map(([k,v])=>[k,orients(v)]));
+
+// ---- Board: 7x7, months in rows 0-1 (6 wide), days after ----
+const CELLS=[];
+for(let r=0;r<7;r++)for(let c=0;c<7;c++){
+  let l=null;
+  if(r<2&&c<6)l={t:'m',v:r*6+c};
+  else if(r>=2&&r<6)l={t:'d',v:(r-2)*7+c+1};
+  else if(r==6&&c<3)l={t:'d',v:29+c};
+  CELLS.push({id:r*7+c,r,c,l});
+}
+const REAL=CELLS.filter(x=>x.l);
+const isTgt=x=>x.l&&((x.l.t=='m'&&x.l.v==S.date[0])||(x.l.t=='d'&&x.l.v==S.date[1]));
+
+// ---- Solver: works for any month/day ----
+function solve(m,d){
+  const free=new Set(REAL.filter(x=>!((x.l.t=='m'&&x.l.v==m)||(x.l.t=='d'&&x.l.v==d))).map(x=>x.id));
+  const order=REAL.map(x=>x.id);
+  function rec(rem,out){
+    if(!rem.length)return out;
+    const t=order.find(i=>free.has(i)),tr=Math.floor(t/7),tc=t%7;
+    for(const id of rem)for(const o of OR[id]){
+      const [a,b]=o[0];
+      const ids=o.map(([x,y])=>{const r=tr+x-a,c=tc+y-b;return(c<0||c>6||r<0||r>6)?-1:r*7+c});
+      if(ids.every(i=>free.has(i))){
+        ids.forEach(i=>free.delete(i));
+        const res=rec(rem.filter(k=>k!=id),[...out,{id,cells:ids}]);
+        if(res)return res;
+        ids.forEach(i=>free.add(i));
+      }
+    }
+    return null;
+  }
+  return rec(Object.keys(P),[]);
+}
+
+// ---- State ----
+const S={date:[0,1],sol:null,placed:{},shape:{},sel:null,mode:'fixed',hover:null};
+let drag=null;
+const toShape=ids=>norm(ids.map(i=>[Math.floor(i/7),i%7]));
+const unplaced=()=>Object.keys(P).filter(k=>!S.placed[k]);
+function snap(){if(S.sol)for(const s of S.sol)if(!S.placed[s.id])S.shape[s.id]=toShape(s.cells)}
+function load(str){
+  const [y,m,d]=str.split('-').map(Number);
+  S.date=[m-1,d];S.sol=solve(m-1,d);
+  const dt=new Date(y,m-1,d);
+  $('#sub').textContent=dt.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  clear();
+}
+function clear(){
+  S.placed={};for(const k in P)S.shape[k]=norm(P[k]);
+  if(S.mode=='fixed')snap();
+  S.sel=unplaced()[0];msg('');render();
+}
+let mt;
+const HELP=()=>'Drag tiles onto the board to solve.<br>'+(S.mode=='free'?'Tap a tile to rotate or flip it.':'Tiles have already been oriented for you.');
+// msg('') shows the help text; msg(text) shows an orange warning for 3s; msg(text,true) shows the green win message
+function msg(t,win){
+  clearTimeout(mt);const e=$('#msg');
+  if(!t){e.innerHTML=HELP();e.className='';return}
+  if(win===true){e.textContent='🎉 '+t;e.className='win';return}
+  if(win==='info'||win==='clear'){e.textContent=t;e.className=win;mt=setTimeout(()=>msg(''),3000);return}
+  e.textContent='⚠️ '+t;e.className='warn';
+  mt=setTimeout(()=>msg(''),3000);
+}
+
+function anchor(sh){
+  const cx=sh.reduce((a,p)=>a+p[0],0)/sh.length,cy=sh.reduce((a,p)=>a+p[1],0)/sh.length;
+  return sh.reduce((b,p)=>Math.hypot(p[0]-cx,p[1]-cy)<Math.hypot(b[0]-cx,b[1]-cy)?p:b);
+}
+function footprint(id,r,c){
+  const sh=S.shape[id],[a,b]=anchor(sh);
+  return sh.map(([x,y])=>[r+x-a,c+y-b]);
+}
+function occMap(){const o={};for(const[k,v]of Object.entries(S.placed))v.cells.forEach(i=>o[i]=k);return o}
+function fits(fp,o){
+  return fp.every(([r,c])=>{
+    if(r<0||r>6||c<0||c>6)return false;
+    const x=CELLS[r*7+c];return x.l&&!isTgt(x)&&o[x.id]===undefined;
+  });
+}
+
+// ---- Rendering ----
+function render(){
+  const o=occMap();
+  $('#board').innerHTML=CELLS.map(x=>{
+    if(!x.l)return`<button class="off" tabindex="-1" aria-hidden="true"></button>`;
+    const lab=x.l.t=='m'?MONTHS[x.l.v]:x.l.v;
+    let cls='',st='';
+    if(isTgt(x))cls='tgt';
+    else if(o[x.id]){cls='on'+(S.placed[o[x.id]].given?' given':'');st=`background:${COL[o[x.id]]}`}
+
+    return`<button data-id="${x.id}" class="${cls}" style="${st}" aria-label="${lab}">${lab}</button>`;
+  }).join('');
+  const un=unplaced();
+  $('#tray').innerHTML=un.length?un.map(k=>{
+    const sh=S.shape[k],h=Math.max(...sh.map(p=>p[0]))+1,w=Math.max(...sh.map(p=>p[1]))+1,ox=Math.floor((4-w)/2),oy=Math.floor((4-h)/2),dim=drag&&drag.started&&drag.k===k;
+    return`<button class="tile" data-k="${k}" aria-pressed="${k===S.sel}" aria-label="Tile ${k}" style="${dim?'opacity:.3':''}"><div class="g">${
+      sh.map(([x,y])=>`<i style="grid-row:${x+oy+1};grid-column:${y+ox+1};background:${COL[k]}"></i>`).join('')}</div></button>`;
+  }).join(''):'<span class="empty">All tiles are on the board.</span>';
+
+
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode==S.mode));
+  paintGhost();
+}
+
+// ---- Actions ----
+function place(r,c){
+  if(!S.sel)return;
+  const fp=footprint(S.sel,r,c);
+  if(!fits(fp,occMap())){msg("That tile doesn't fit there.");return render()}
+  S.placed[S.sel]={cells:fp.map(([a,b])=>a*7+b)};
+  S.sel=unplaced()[0];S.hover=null;
+  if(!S.sel)msg('Solved! Every tile fits.',true);else msg('');
+  render();
+}
+function hint(){
+  if(!S.sol)return msg('No solution found for this date.');
+  const same=(a,b)=>[...a].sort().join()==[...b].sort().join();
+  const left=S.sol.filter(s=>!(S.placed[s.id]&&same(S.placed[s.id].cells,s.cells)));
+  if(!left.length)return msg('Every tile is already in its correct spot.');
+  const s=left[Math.floor(Math.random()*left.length)],cs=new Set(s.cells);
+  for(const[k,v]of Object.entries(S.placed))if(k==s.id||v.cells.some(i=>cs.has(i)))delete S.placed[k];
+  S.placed[s.id]={cells:s.cells,given:true};
+  S.shape[s.id]=toShape(s.cells);
+  if(!S.sel||S.placed[S.sel])S.sel=unplaced()[0];
+  if(!unplaced().length)msg('Solved with hints! Tap Clear to try again.',true);
+  else msg('💡 Hint used: one tile placed for you.','info');
+  render();
+}
+function turn(fn){
+  if(S.mode=='fixed'||!S.sel)return;
+  S.shape[S.sel]=fn(S.shape[S.sel]);
+  if(drag&&drag.started){drag.fly.remove();makeFly(S.sel);moveFly()}
+  render();
+}
+
+// ---- Events ----
+// Pointer-based drag and drop (mouse + touch). Ghost cells are drawn only on in-bounds cells, so nothing wraps across rows.
+const cellAt=(x,y)=>{const el=document.elementFromPoint(x,y),b=el&&el.closest&&el.closest('#board [data-id]');if(!b)return null;const i=+b.dataset.id;return[Math.floor(i/7),i%7]};
+function paintGhost(){
+  document.querySelectorAll('#board .ok,#board .bad').forEach(e=>e.classList.remove('ok','bad'));
+  if(!S.hover||!S.sel)return;
+  const fp=footprint(S.sel,S.hover[0],S.hover[1]),good=fits(fp,occMap());
+  fp.forEach(([r,c])=>{if(r<0||r>6||c<0||c>6)return;const b=$('#board').children[r*7+c];if(b&&b.dataset.id)b.classList.add(good?'ok':'bad')});
+}
+function makeFly(k){
+  const w=$('#board').children[0].offsetWidth,step=w+3,sh=S.shape[k],[a,b]=anchor(sh);
+  const f=document.createElement('div');f.className='fly';
+  f.innerHTML=sh.map(([x,y])=>`<i style="left:${y*step}px;top:${x*step}px;width:${w}px;height:${w}px;background:${COL[k]}"></i>`).join('');
+  document.body.appendChild(f);drag.fly=f;drag.off=[b*step+w/2,a*step+w/2];
+}
+function moveFly(){const d=drag;d.fly.style.transform=`translate(${d.px-d.off[0]}px,${d.py-d.lift-d.off[1]}px)`}
+function down(e,k,from,cell){
+  if((e.button>0)||drag)return;
+  e.preventDefault();
+  try{document.body.setPointerCapture(e.pointerId)}catch(_){}
+  drag={k,from,cell,x0:e.clientX,y0:e.clientY,px:e.clientX,py:e.clientY,moved:false,started:false,lift:e.pointerType==='mouse'?0:64,wasSel:S.sel===k};
+  addEventListener('pointermove',move);addEventListener('pointerup',up);addEventListener('pointercancel',stop);
+}
+function move(e){
+  const d=drag;d.px=e.clientX;d.py=e.clientY;
+  if(!d.started){
+    if(Math.hypot(d.px-d.x0,d.py-d.y0)<8)return;
+    d.moved=true;
+    d.started=true;if(d.from=='board')delete S.placed[d.k];
+    S.sel=d.k;document.body.classList.add('dragging');msg('');render();makeFly(d.k);
+  }
+  moveFly();S.hover=cellAt(d.px,d.py-d.lift);paintGhost();
+}
+function end(){
+  removeEventListener('pointermove',move);removeEventListener('pointerup',up);removeEventListener('pointercancel',stop);
+  document.body.classList.remove('dragging');
+  const d=drag;drag=null;if(d&&d.fly)d.fly.remove();return d;
+}
+function stop(){const d=end();S.hover=null;if(d&&d.started)render()}
+function up(e){
+  const d=drag;d.px=e.clientX;d.py=e.clientY;
+  if(!d.started){
+    end();
+    if(d.moved)return;
+    if(d.from=='tray'){S.sel=d.k;if(S.mode=='free')turn(cycle);else render()}
+
+
+    return;
+  }
+  const h=cellAt(d.px,d.py-d.lift);
+  end();S.hover=null;
+  if(h)place(h[0],h[1]);else render();
+}
+$('#tray').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-k]');if(b)down(e,b.dataset.k,'tray')});
+$('#board').addEventListener('pointerdown',e=>{
+  const b=e.target.closest('[data-id]');if(!b)return;
+  const i=+b.dataset.id,k=occMap()[i];
+  if(k){if(S.placed[k].given)return msg('That tile was a hint; it cannot be moved.');down(e,k,'board')}
+
+});
+
+
+
+
+
+$('#hint').onclick=hint;
+$('#reset').onclick=()=>{clear();msg('🧹 Board cleared.','clear')};
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{S.mode=b.dataset.mode;if(S.mode=='fixed')snap();msg('');render()});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName=='INPUT')return;
+  if(e.key=='r'||e.key=='R')turn(cycle);
+  if(e.key=='f'||e.key=='F')turn(flip);
+});
+$('#dt').addEventListener('change',e=>e.target.value&&load(e.target.value));
+
+const t=new Date(),pad=n=>String(n).padStart(2,'0');
+$('#dt').value=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+load($('#dt').value);
+</script>
+</body>
+</html>
