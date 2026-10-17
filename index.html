@@ -56,6 +56,14 @@ button.b:disabled{opacity:.4;cursor:not-allowed}
 .empty{color:var(--mut);align-self:center}
 button:focus-visible,input:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
 @media(min-width:860px){.app{grid-template-columns:minmax(0,520px) 1fr;column-gap:36px}header,.modes{grid-column:1/-1}.modes{margin:0}.board{width:min(100%,520px,calc(100dvh - 250px))}.tray{justify-content:flex-start}}
+@media (orientation:landscape) and (max-height:500px){
+  body::before{
+    content:"Please rotate your phone to portrait";
+    position:fixed;inset:0;z-index:100;
+    display:grid;place-items:center;text-align:center;padding:24px;
+    background:var(--bg);color:var(--ink);font-size:1.2rem;font-weight:600;
+  }
+}
 </style>
 </head>
 <body>
@@ -314,6 +322,7 @@ $('#dt').addEventListener('change',e=>e.target.value&&load(e.target.value));
 const t=new Date(),pad=n=>String(n).padStart(2,'0');
 $('#dt').value=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
 load($('#dt').value);
+screen.orientation?.lock?.('portrait').catch(()=>{});
 </script>
 </body>
 </html>
