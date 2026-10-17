@@ -1,0 +1,9 @@
+{
+  "name": "Dately Puzzle",
+  "short_name": "Dately",
+  "display": "standalone",
+  "start_url": ".",
+  "background_color": "#12161c",
+  "theme_color": "#12161c",
+  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png" }]
+}
